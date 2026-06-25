@@ -21,6 +21,7 @@ status: 학습용 v1
 | # | 문서 | 한 줄 | 난이도 |
 |---|---|---|---|
 | 01 | [[ProjectKD-코드해설-01-WeaponTrace패링]] | 타격판정→데미지→패링 게이트 전체 흐름. **플래그십** | ★★★ |
+| 01b | [[ProjectKD-코드해설-01b-AT_WeaponTrace내부+GAS기초]] | AT_WeaponTrace 내부(서브스텝 수학·트레이스 종류·람다) + GAS/UObject 기초(AbilityTask 수명·UPROPERTY=GC·CDO) | ★★★ |
 | 02 | [[ProjectKD-코드해설-02-적AI직교모델]] | 토큰/EQS/Crowd + 공유 BT + SelectAttack 데이터드리븐 | ★★ |
 | 03 | [[ProjectKD-코드해설-03-사망처형데스블로]] | 경직→처형→데스블로, 동기 사망, 컴포넌트 분리. **제일 어려움** | ★★★ |
 | 04 | [[ProjectKD-코드해설-04-히트피드백-비대칭경직]] | 연출 디커플링, 본 셰이크, 비대칭 경직 | ★ |

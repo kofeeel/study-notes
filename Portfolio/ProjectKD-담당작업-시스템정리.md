@@ -10,6 +10,7 @@ tags:
 created: 2026-06-15
 status: 포폴용 v1
 related:
+  - "[[ProjectKD-전투프레임워크-아키텍처]]"
   - "[[ProjectKD-전투시스템-원페이저]]"
   - "[[ProjectKD-문제해결-사례집]]"
   - "[[ProjectKD-패링-기능명세서]]"
@@ -24,6 +25,7 @@ related:
 **엔진/스택** — UE5.6 · GAS(Ability/Tags/Tasks) · C++ 중심(헤더 설계 + 구현), 데이터드리븐(DataAsset)
 **담당 도메인** — 타격판정, 적 AI, GAS 코어, 사망/처형 사이클, 히트 피드백, 전투 아키텍처
 **역할 한 줄** — "내가 설계한 몬스터를 C++/UE5로 끝까지 굴러가게 만드는 사람"
+**저작 경계(2인 페어)** — 아래는 내 저작이다. 플레이어 어빌리티 GA·콤보·락온·처형 카메라 큐·시네마틱은 **팀원 저작**. 정확한 경계표 → [[ProjectKD-전투프레임워크-아키텍처#1 저작 경계 — 정직한 스코핑 2인 페어]]
 
 ---
 
@@ -72,6 +74,8 @@ related:
 | **패링 난이도** | **플레이어 퍼펙트 윈도우 길이**(적 히트박스 아님) |
 
 적 히트는 정확하게(머리 소켓+타이트 윈도우), 패링 관대함은 플레이어 쪽에서. 세키로/스텔라 블레이드 모델 — 적 히트박스는 정직하고, 디플렉트 *윈도우*가 관대함 레버.
+
+> **저작 경계** — 플레이어 퍼펙트 윈도우/패링 판정 *구현*은 **팀원 레인**. 내 기여는 ① "패링은 트레이스 히트에 100% 게이팅된다"는 데이터흐름 규명 ② 적 측 히트 정확도(머리 소켓·윈도우별 트레이스 오버라이드). 즉 **두 레버를 분리할 수 있다는 진단 + 적 쪽 레버**가 내 것이고, 플레이어 쪽 레버 튜닝은 팀원이 했다.
 
 ### 진영별 비대칭 = 분기가 아니라 데이터
 - 플레이어: 1 GA 활성화 = 1스윙 → "1스윙 1히트"(`bOncePerActor=true`)
@@ -127,7 +131,9 @@ MoveTo + Detour Crowd    = "그 목적지까지 경로 + 국소 회피"
 > 상세 전문: 위키/메모리 [[ragdoll-death-montage-decision]] · 처형 메커닉 [[execution-mechanic]]
 
 ### 설계 의도
-"경직 중 강공 피격" = 처형. 적이 죽을 수도(Health≤0 랙돌), 살아서 데스블로 후 일어날 수도 있는 **반응형** 메커닉. 플레이어는 처형을 *트리거*만 하고 판정·연출은 전부 적 측이 소유한다(도메인 분리).
+"경직 중 강공 피격" = 처형. 적이 죽을 수도(Health≤0 랙돌), 살아서 데스블로 후 일어날 수도 있는 **반응형** 메커닉. 플레이어는 처형을 *트리거*만 하고 **판정**은 적 측이 소유한다(도메인 분리).
+
+> **저작 경계(seam)** — 처형 *판정·분기 로직*(생존/데스블로, `ExecutionComponent`) = 내 것. *카메라 연출 큐*(`GCN_ExecutionCamera`)·시네마틱 = **팀원**이 내 `OnExecutionBegin`/`OnExecutionResolved` 이벤트에 물려 제작. 면접 답변: "분기 로직은 제 ExecutionComponent, 카메라는 팀원이 제 이벤트에 물렸습니다."
 
 ### 구현
 - **사망 = 완전 동기** — `SetNumericAttributeBase(Health)` → 변화 델리게이트 동기 발화 → `HandleDeath`가 GE 적용 콜스택 *안에서* 전부 실행. (진단 로그 `bExecutionDeath=1`로 증명. 한때 "지연 사망" 가설을 세웠으나 오진으로 확인하고 폐기.)
@@ -149,7 +155,7 @@ MoveTo + Detour Crowd    = "그 목적지까지 경로 + 국소 회피"
 
 ### 구현
 - **히트 피드백을 GE에서 분리** — victim별 `Event.Combat.Hit` 핸들러 + 보편 HitStop(`OnWeaponHit`). 경직 중에도 칩 피드백은 들어가되 처형 강공만 제외.
-- **히트스탑** — `Montage_Pause` + 타이머 `Resume`(attacker 0.08s / victim 0.12s). base GA에 있어 콤보·공중콤보가 상속으로 공짜.
+- **히트스탑** — `Montage_Pause` + 타이머 `Resume`(attacker 0.08s / victim 0.12s). 내 base GA에 넣어서, 그 위에 얹힌 **팀원의 (공중)콤보가 상속으로 공짜로 받는다**(프레임워크 오너 이점 — 콤보 자체는 팀원 저작).
 - **본 셰이크 / 버텍스 셰이크** — victim 전용 연출, 이음새(`TriggerBoneShakeParams`)는 이미 뚫어둠. 데이터 전환은 hit 프로파일 3개+ 모일 때까지 보류(YAGNI).
 
 ---
@@ -165,8 +171,10 @@ MoveTo + Detour Crowd    = "그 목적지까지 경로 + 국소 회피"
 - **`UStaggerComponent`** — 경직 상태머신, 3초 자동복귀 타이머
 - **`UExecutionComponent`** — 처형 사이클
 - **`UExecutionProfile`** (DataAsset) — Montage/DamageGE/Cue/Duration/bSurvivable
-- 통신 = `State.Combat.Staggered` 태그 + 델리게이트(OnStaggerBegin/Recovered/ExecutionBegin/Resolved), **직접 포인터 0개**(§1-3 단방향 의존성)
-- 417 → ~290줄. 런타임 검증(경직→처형→복귀 / 3초 자동복귀 / 사망)까지 완료
+- 통신 = `State.Combat.Staggered` 태그 + 델리게이트(OnStaggerBegin/Recovered/ExecutionBegin/Resolved), **직접 포인터 0개**(단방향 의존성)
+- 경직/처형 상태머신을 Pawn에서 추출(현재 `StaggerComponent` 134줄 / `ExecutionComponent` 210줄). 런타임 검증(경직→처형→복귀 / 3초 자동복귀 / 사망)까지 완료.
+
+> **정직한 현재 상태** — 추출 후 사망·랙돌·죽음몽타주 인계·히트리액트·넉백이 다시 Pawn에 쌓여 `KDEnemyBaseCharacter`는 **현재 530줄**로 자체 룰(500줄)을 재차 넘었다. 남은 god-ish 영역(사망/몽타주 오케스트레이션)은 다음에 `DeathComponent`로 한 번 더 추출할 후보. → "리팩토링은 1회성이 아니라 지속 관리"라는 자기인식이 핵심(면접에서 이렇게 답하면 약점이 성숙도 신호로 뒤집힌다).
 
 ---
 
